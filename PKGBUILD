@@ -1,8 +1,8 @@
 # Maintainer: Ben Schneider <ben@bens.haus>
 
-pkgname=linux-rpi5
-pkgver=6.12.57
-_commit=ea23f08af9e5876d6076823f360693d5c32cabcc
+pkgbase=linux-rpi5
+pkgver=6.12.58
+_commit=1f204175932fe20e477da83012d9fd2fce221366
 _srcname=linux-${_commit}
 pkgrel=1
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
@@ -16,10 +16,19 @@ options=(
   !debug
   !strip
 )
+install=$pkgbase.install
 source=(
   "linux-rpi.tar.gz::https://github.com/raspberrypi/linux/archive/${_commit}.tar.gz"
+  "config.txt"
 )
-sha256sums=('45b7a94ab18df9d33e145ea9c057b3715b7262d65610bb910ee6ee8509e6f084')
+sha256sums=('7f40ea4ca483d74f3f0a510c42481b18374ff312547a5bcf4642a6c78a0a47b0'
+            '9e9c2c7ff18dbae6fd6c34112478bc20b49fec7bd36d08f82686f074b5bf8761')
+
+case "${CARCH}" in
+ x86_64)  KARCH=x86 ;;
+ aarch64) KARCH=arm64 ;;
+esac
+export KARCH
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
@@ -64,14 +73,15 @@ build() {
   make Image.gz dtbs modules
 }
 
-package() {
+_package() {
   pkgdesc="$pkgdesc"
   depends=(
     coreutils
+    initramfs
     kmod
   )
   optdepends=(
-    'initramfs: initial ramdisk creation'
+    'linux-firmware-rpi5: bluetooth/wifi drivers'
     'wireless-regdb: to set the correct wireless channels of your country'
   )
   provides=(WIREGUARD-MODULE)
@@ -97,13 +107,111 @@ package() {
   echo "Installing device tree binaries..."
   mkdir -p "${modulesdir}/dtbs"
   make INSTALL_DTBS_PATH="${modulesdir}/dtbs" dtbs_install
+  install -Dt "${pkgdir}/boot" "${modulesdir}/dtbs/broadcom/bcm2712"*
+  install -Dt "${pkgdir}/boot/overlays" "${modulesdir}/dtbs/overlays/"*
+  rm -rf "${modulesdir}/dtbs"
 
-  for i in bcm2837 bcm2711 bcm2710; do
-    rm "${modulesdir}/dtbs/broadcom/$i"*.dtb
+  cd "${srcdir}"
+  install -m644 -Dt "${modulesdir}/boot" config.txt
+}
+
+_package-headers() {
+  pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
+  depends=(pahole)
+
+  cd $_srcname
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+
+  echo "Installing build files..."
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
+    localversion.* version vmlinux
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/${KARCH}" -m644 "arch/${KARCH}/Makefile"
+  cp -t "$builddir" -a scripts
+  ln -srt "$builddir" "$builddir/scripts/gdb/vmlinux-gdb.py"
+
+  # required when STACK_VALIDATION is enabled
+  if grep -q "CONFIG_HAVE_STACK_VALIDATION=y" "../config.${KARCH}"; then
+    install -Dt "$builddir/tools/objtool" tools/objtool/objtool
+  fi
+
+  echo "Installing headers..."
+  cp -t "$builddir" -a include
+  cp -t "$builddir/arch/${KARCH}" -a "arch/${KARCH}/include"
+  install -Dt "$builddir/arch/${KARCH}/kernel" -m644 "arch/${KARCH}/kernel/asm-offsets.s"
+
+  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
+  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
+
+  # https://bugs.archlinux.org/task/13146
+  install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
+
+  # https://bugs.archlinux.org/task/20402
+  install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
+  install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
+  install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
+
+  # https://bugs.archlinux.org/task/71392
+  install -Dt "$builddir/drivers/iio/common/hid-sensors" -m644 drivers/iio/common/hid-sensors/*.h
+
+  echo "Installing KConfig files..."
+  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
+
+  echo "Installing Rust files..."
+  if grep -q "CONFIG_RUST=y" "../config.${KARCH}"; then
+    install -Dt "$builddir/rust" -m644 rust/*.rmeta
+    install -Dt "$builddir/rust" rust/*.so
+  fi
+
+  echo "Installing unstripped VDSO..."
+  make INSTALL_MOD_PATH="$pkgdir/usr" vdso_install \
+    link=  # Suppress build-id symlinks
+
+  echo "Removing unneeded architectures..."
+  local arch
+  for arch in "$builddir"/arch/*/; do
+    [[ $arch = */"${KARCH}"/ ]] && continue
+    echo "Removing $(basename "$arch")"
+    rm -r "$arch"
   done
 
-  mv "${modulesdir}/dtbs/broadcom/"* "${modulesdir}/dtbs/"
-  rmdir "${modulesdir}/dtbs/broadcom"
+  echo "Removing documentation..."
+  rm -r "$builddir/Documentation"
+
+  echo "Removing broken symlinks..."
+  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
+
+  echo "Removing loose objects..."
+  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
+
+  echo "Stripping build tools..."
+  local file
+  while read -rd '' file; do
+    case "$(file -Sib "$file")" in
+      application/x-sharedlib\;*)      # Libraries (.so)
+        strip -v $STRIP_SHARED "$file" ;;
+      application/x-archive\;*)        # Libraries (.a)
+        strip -v $STRIP_STATIC "$file" ;;
+      application/x-executable\;*)     # Binaries
+        strip -v $STRIP_BINARIES "$file" ;;
+      application/x-pie-executable\;*) # Relocatable binaries
+        strip -v $STRIP_SHARED "$file" ;;
+    esac
+  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
+
+  echo "Stripping vmlinux..."
+  strip -v $STRIP_STATIC "$builddir/vmlinux"
+
+  echo "Adding symlink..."
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
 }
+
+pkgname=("${pkgbase}" "${pkgbase}-headers")
+for _p in ${pkgname[@]}; do
+  eval "package_${_p}() {
+    _package${_p#${pkgbase}}
+  }"
+done
 
 # vim:set ts=8 sts=2 sw=2 et:
