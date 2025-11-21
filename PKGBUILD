@@ -1,8 +1,8 @@
 # Maintainer: Ben Schneider <ben@bens.haus>
 
 pkgbase=linux-rpi5
-pkgver=6.12.58
-_commit=1f204175932fe20e477da83012d9fd2fce221366
+pkgver=6.17.8
+_commit=70920f43fd47d8bf1306499f9b80a21a15189cda
 _srcname=linux-${_commit}
 pkgrel=1
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
@@ -21,7 +21,7 @@ source=(
   "linux-rpi.tar.gz::https://github.com/raspberrypi/linux/archive/${_commit}.tar.gz"
   "config.txt"
 )
-sha256sums=('7f40ea4ca483d74f3f0a510c42481b18374ff312547a5bcf4642a6c78a0a47b0'
+sha256sums=('ef5e170ef24fd1390e68f32f43c64fd34bcc7f2cfefda54de767ac8cfe8696f1'
             '9e9c2c7ff18dbae6fd6c34112478bc20b49fec7bd36d08f82686f074b5bf8761')
 
 case "${CARCH}" in
