@@ -1,8 +1,8 @@
 # Maintainer: Ben Schneider <ben@bens.haus>
 
 pkgbase=linux-rpi5
-pkgver=6.17.8
-_commit=70920f43fd47d8bf1306499f9b80a21a15189cda
+pkgver=6.17.9
+_commit=427d4259e962cf84791bc14b6adc496b5ae279ac
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-${_commit}
 pkgrel=1
@@ -22,7 +22,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('ef5e170ef24fd1390e68f32f43c64fd34bcc7f2cfefda54de767ac8cfe8696f1'
+sha256sums=('0c377dd56729a692173ca9a3663516dfe64873fd61ca3239f7e3a09d602b10d0'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
@@ -87,6 +87,7 @@ _package() {
     'wireless-regdb: to set the correct wireless channels of your country'
   )
   provides=(WIREGUARD-MODULE)
+  replaces=('linux-rpi-16k')
   install=$pkgbase.install
 
   cd "${srcdir}/${_srcname}"
@@ -121,6 +122,7 @@ _package() {
 _package-headers() {
   pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
   depends=(pahole)
+  replaces=('linux-rpi-16k-headers')
 
   cd $_srcname
   local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
@@ -201,6 +203,7 @@ _package-headers() {
 
 package_linux-firmware-rpi5() {
   depends=('linux-firmware-broadcom')
+  replaces=('firmware-raspberrypi')
 
   mkdir -p $pkgdir/usr/lib/firmware/brcm
 
