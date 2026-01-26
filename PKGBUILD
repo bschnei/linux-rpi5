@@ -47,23 +47,23 @@ prepare() {
   echo "Setting version..."
   echo "-$pkgrel" > localversion.10-pkgrel
   echo "${pkgbase#linux}" > localversion.20-pkgname
-  
+
   echo "Setting config..."
 
   # unset vendor LOCALVERSION to keep pkgver clean
   sed -i '/^CONFIG_LOCALVERSION=/d' ./arch/arm64/configs/bcm2712_defconfig
 
-  # enable loading compressed firmware files which
-  # is how they are packaged in linux-firmware
-  echo "CONFIG_FW_LOADER_COMPRESS=y" >> ./arch/arm64/configs/bcm2712_defconfig
-  echo "CONFIG_FW_LOADER_COMPRESS_ZSTD=y" >> ./arch/arm64/configs/bcm2712_defconfig
- 
-  # enable landlock -- consistent with Arch Linux 
-  echo "CONFIG_SECURITY_LANDLOCK=y" >> ./arch/arm64/configs/bcm2712_defconfig
-  echo 'CONFIG_LSM="landlock"' >> ./arch/arm64/configs/bcm2712_defconfig
-
   make bcm2712_defconfig
 
+  # enable loading compressed firmware files which
+  # is how they are packaged in linux-firmware
+  scripts/config --enable CONFIG_FW_LOADER_COMPRESS
+  scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
+
+  # enable landlock -- consistent with Arch Linux
+  scripts/config --enable CONFIG_SECURITY_LANDLOCK
+  scripts/config --set-val CONFIG_LSM landlock
+  scripts/config --refresh
   make -s kernelrelease > version
   echo "Prepared $pkgbase version $(<version)"
 }
