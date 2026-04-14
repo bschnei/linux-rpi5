@@ -1,8 +1,8 @@
 # Maintainer: Ben Schneider <ben@bens.haus>
 
 pkgbase=linux-rpi5
-pkgver=6.19.12
-_commit=66b65cb64a1f1b409b73628c9a2279b1609ba6b0
+pkgver=7.0.0
+_commit=e6f7e1c49c84197cde4d4a2d7a1578a78df73301
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
 pkgrel=1
@@ -22,7 +22,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('d4c160d5f55fa4e89bf7811d4bdbe068732d34ad837d5d21091188a8fdf68a5b'
+sha256sums=('f5b463d456b4378e59e66c3d20d2b402fe96105fa7c6b8582df31fcfed07d62b'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
