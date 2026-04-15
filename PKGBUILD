@@ -2,10 +2,10 @@
 
 pkgbase=linux-rpi5
 pkgver=7.0.0
-_commit=e6f7e1c49c84197cde4d4a2d7a1578a78df73301
+_commit=bb31e96fee23a474a0504a15097d7ee55bed678e
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
-pkgrel=1
+pkgrel=2
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
 arch=(aarch64)
 url='https://www.raspberrypi.com/'
@@ -22,7 +22,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('f5b463d456b4378e59e66c3d20d2b402fe96105fa7c6b8582df31fcfed07d62b'
+sha256sums=('84e123fa77612f6da1d3475e9f6d779de14c88f7b4ea4974fbd5a6ec03d94f48'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
@@ -44,33 +44,28 @@ pkgver() {
 prepare() {
   cd "${srcdir}/${_srcname}"
 
-  echo "Setting version..."
+  msg2 "Setting version..."
   echo "-$pkgrel" > localversion.10-pkgrel
   echo "${pkgbase#linux}" > localversion.20-pkgname
   
-  echo "Setting config..."
+  msg2 "Setting config..."
+  local KCONFIG="./scripts/config --file arch/arm64/configs/bcm2712_defconfig"
 
-  # unset vendor LOCALVERSION to keep pkgver clean
-  sed -i '/^CONFIG_LOCALVERSION=/d' ./arch/arm64/configs/bcm2712_defconfig
-
-  # enable loading compressed firmware files which
-  # is how they are packaged in linux-firmware
-  echo "CONFIG_FW_LOADER_COMPRESS=y" >> ./arch/arm64/configs/bcm2712_defconfig
-  echo "CONFIG_FW_LOADER_COMPRESS_ZSTD=y" >> ./arch/arm64/configs/bcm2712_defconfig
+  $KCONFIG --undefine CONFIG_LOCALVERSION
+  $KCONFIG --enable CONFIG_FW_LOADER_COMPRESS
+  $KCONFIG --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
+  $KCONFIG --enable CONFIG_SECURITY_LANDLOCK
+  $KCONFIG --set-str CONFIG_LSM "landlock,lockdown,yama,integrity,bpf"
+  $KCONFIG --enable CONFIG_TRANSPARENT_HUGEPAGE
+  $KCONFIG --enable CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
+  $KCONFIG --enable CONFIG_HUGETLBFS
+  $KCONFIG --enable CONFIG_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
+  $KCONFIG --set-str CONFIG_ZSWAP_COMPRESSOR_DEFAULT "zstd"
+  $KCONFIG --enable CONFIG_KSM
  
-  # enable landlock -- consistent with Arch Linux 
-  echo "CONFIG_SECURITY_LANDLOCK=y" >> ./arch/arm64/configs/bcm2712_defconfig
-  echo 'CONFIG_LSM="landlock"' >> ./arch/arm64/configs/bcm2712_defconfig
-
-  #Allign with x86_64
-  echo 'CONFIG_TRANSPARENT_HUGEPAGE=y' >> ./arch/arm64/configs/bcm2712_defconfig
-  echo 'CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS=y' >> ./arch/arm64/configs/bcm2712_defconfig
-  echo 'CONFIG_HUGETLBFS=y' >> ./arch/arm64/configs/bcm2712_defconfig
-
   make bcm2712_defconfig
-
   make -s kernelrelease > version
-  echo "Prepared $pkgbase version $(<version)"
+  msg2 "Prepared $pkgbase version $(<version)"
 }
 
 build() {
