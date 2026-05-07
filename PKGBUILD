@@ -31,6 +31,7 @@ case "${CARCH}" in
  aarch64) KARCH=arm64 ;;
 esac
 export KARCH
+export LOCALVERSION=
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
