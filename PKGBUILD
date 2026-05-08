@@ -1,8 +1,8 @@
 # Maintainer: Ben Schneider <ben@bens.haus>
 
 pkgbase=linux-rpi5
-pkgver=7.0.3
-_commit=f268914575ee4ffda2dd4bc35f003ccce3c7f025
+pkgver=7.0.4
+_commit=3e2081d00f6b47990c5239dc52f2af6fa8d6b689
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
 pkgrel=1
@@ -22,7 +22,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('faac09d63ed21181ed3dfe347923437027c8036229adbdfbeeade0f1a4ed0a49'
+sha256sums=('a786cc13f2d3edb5df65164befc9bf1a255c11bbf0c135475ff825a3cd4e9aa7'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
@@ -31,11 +31,12 @@ case "${CARCH}" in
  aarch64) KARCH=arm64 ;;
 esac
 export KARCH
-export LOCALVERSION=
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
+
+export LOCALVERSION=
 
 pkgver() {
   cd "${srcdir}/${_srcname}"
@@ -45,28 +46,36 @@ pkgver() {
 prepare() {
   cd "${srcdir}/${_srcname}"
 
-  msg2 "Setting version..."
-  echo "-$pkgrel" > localversion.10-pkgrel
-  echo "${pkgbase#linux}" > localversion.20-pkgname
-  
-  msg2 "Setting config..."
-  local KCONFIG="./scripts/config --file arch/arm64/configs/bcm2712_defconfig"
+  echo "Setting version..."
+  echo "${pkgbase#linux}" > localversion.10-pkgname
+  echo "-$pkgrel" > localversion.20-pkgrel
 
-  $KCONFIG --undefine CONFIG_LOCALVERSION
-  $KCONFIG --enable CONFIG_FW_LOADER_COMPRESS
-  $KCONFIG --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
-  $KCONFIG --enable CONFIG_SECURITY_LANDLOCK
-  $KCONFIG --set-str CONFIG_LSM "landlock,lockdown,yama,integrity,bpf"
-  $KCONFIG --enable CONFIG_TRANSPARENT_HUGEPAGE
-  $KCONFIG --enable CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
-  $KCONFIG --enable CONFIG_HUGETLBFS
-  $KCONFIG --enable CONFIG_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
-  $KCONFIG --set-str CONFIG_ZSWAP_COMPRESSOR_DEFAULT "zstd"
-  $KCONFIG --enable CONFIG_KSM
- 
+  echo "Setting config..."
+
+  # unset vendor LOCALVERSION to keep pkgver clean
+  sed -i '/^CONFIG_LOCALVERSION=/d' ./arch/arm64/configs/bcm2712_defconfig
+
   make bcm2712_defconfig
+
+  # enable loading compressed firmware files which
+  # is how they are packaged in linux-firmware
+  scripts/config --enable CONFIG_FW_LOADER_COMPRESS
+  scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
+
+  # enable landlock -- consistent with Arch Linux
+  scripts/config --enable CONFIG_SECURITY_LANDLOCK
+  scripts/config --set-str CONFIG_LSM "landlock,lockdown,yama,integrity,bpf"
+
+  # align with x86_64
+  scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
+  scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
+  scripts/config --enable CONFIG_HUGETLBFS
+  scripts/config --enable CONFIG_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
+  scripts/config --set-val CONFIG_ZSWAP_COMPRESSOR_DEFAULT "zstd"
+  scripts/config --enable CONFIG_KSM
+  scripts/config --refresh
   make -s kernelrelease > version
-  msg2 "Prepared $pkgbase version $(<version)"
+  echo "Prepared $pkgbase version $(<version)"
 }
 
 build() {
