@@ -2,10 +2,10 @@
 
 pkgbase=linux-rpi5
 pkgver=7.2.7
-_commit=0370cfb8357f2d439cb4fa19d7845180c9d92c53
+_commit=0300b89d1a24c976c446a07c19a42b90253405af
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
-pkgrel=1
+pkgrel=2
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
 arch=(aarch64)
 url='https://www.raspberrypi.com/'
@@ -23,7 +23,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('a5670afd7f9462e0b20dfd68ce404781f7fb319bafccd487a987a0f7acb3d340'
+sha256sums=('01199c34d380ef860cd5fdb37459e5f255e3e59a8cb5f94030b3d4ec2db64f35'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
