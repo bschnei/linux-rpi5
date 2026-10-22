@@ -1,6 +1,6 @@
 pkgbase = linux-rpi5
 	pkgdesc = Vendor kernel and modules for Raspberry Pi 5
-	pkgver = 7.2.11
+	pkgver = 7.3.0
 	pkgrel = 1
 	url = https://www.raspberrypi.com/
 	arch = aarch64
@@ -9,10 +9,10 @@ pkgbase = linux-rpi5
 	makedepends = git
 	options = !debug
 	options = !strip
-	source = linux-rpi::git+https://github.com/raspberrypi/linux#commit=61d337138d273f134f41ef06eb0dd97c90123934
+	source = linux-rpi::git+https://github.com/raspberrypi/linux#commit=b9ae2efb2dba0d5801dcad3b618d0f2fecfe816c
 	source = BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/cdf61dc691a49ff01a124752bd04194907f0f9cd/debian/firmware/broadcom/BCM4345C0.hcd
 	source = config.txt
-	sha256sums = 43a144244724f7046f24425390be476555bb7bf6afd1422b8aaf4aea27481af3
+	sha256sums = e5101845c35f60c46de65ef22e9f6bd7452dbd609c124b4aff2cb245cd2a4051
 	sha256sums = 51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c
 	sha256sums = 7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6
 
