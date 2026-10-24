@@ -2,10 +2,10 @@
 
 pkgbase=linux-rpi5
 pkgver=7.3.0
-_commit=b9ae2efb2dba0d5801dcad3b618d0f2fecfe816c
+_commit=3e14c429f6c0b8e10d5a2dad345e8a7011be6dfb
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
-pkgrel=1
+pkgrel=2
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
 arch=(aarch64)
 url='https://www.raspberrypi.com/'
@@ -23,7 +23,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('e5101845c35f60c46de65ef22e9f6bd7452dbd609c124b4aff2cb245cd2a4051'
+sha256sums=('8de703ce65c18ddcbd526dcf61e270bae47e048f242795dda367ca2c6219165c'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
@@ -63,9 +63,16 @@ prepare() {
   scripts/config --enable CONFIG_FW_LOADER_COMPRESS
   scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
 
-  # enable landlock -- consistent with Arch Linux
+  # enable LSMs to match CONFIG_LSM below -- consistent with Arch Linux.
+  # The vendor defconfig only builds landlock, so the other LSMs named in
+  # CONFIG_LSM must be enabled explicitly or the kernel silently drops them.
+  # lockdown is deliberately omitted: SECURITY_LOCKDOWN_LSM does
+  # "select MODULE_SIG if MODULES", which would silently turn on module
+  # signing (ephemeral build-time key) -- a bigger change than intended here.
   scripts/config --enable CONFIG_SECURITY_LANDLOCK
-  scripts/config --set-str CONFIG_LSM "landlock,lockdown,yama,integrity,bpf"
+  scripts/config --enable CONFIG_SECURITY_YAMA
+  scripts/config --enable CONFIG_BPF_LSM
+  scripts/config --set-str CONFIG_LSM "landlock,yama,integrity,bpf"
 
   # align with x86_64
   scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
@@ -99,7 +106,7 @@ _package() {
     'linux-firmware-rpi5: wifi and bluetooth drivers'
     'wireless-regdb: to set the correct wireless channels of your country'
   )
-  provides=(WIREGUARD-MODULE)
+  provides=(KSMBD-MODULE WIREGUARD-MODULE)
   replaces=('linux-rpi-16k')
   install=$pkgbase.install
 
