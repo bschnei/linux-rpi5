@@ -2,10 +2,10 @@
 
 pkgbase=linux-rpi5
 pkgver=7.3.0
-_commit=3e14c429f6c0b8e10d5a2dad345e8a7011be6dfb
+_commit=1d8febf2829f4bab384cec08cb70c380b7102756
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
-pkgrel=2
+pkgrel=3
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
 arch=(aarch64)
 url='https://www.raspberrypi.com/'
@@ -23,7 +23,7 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('8de703ce65c18ddcbd526dcf61e270bae47e048f242795dda367ca2c6219165c'
+sha256sums=('5821fd3a252ff58ae24f6bdc91d950464ea4c3e752dbc60cf140c61fd3b69ffa'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
             '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
 
@@ -64,8 +64,10 @@ prepare() {
   scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
 
   # enable LSMs to match CONFIG_LSM below -- consistent with Arch Linux.
-  # The vendor defconfig only builds landlock, so the other LSMs named in
-  # CONFIG_LSM must be enabled explicitly or the kernel silently drops them.
+  # The vendor defconfig builds AppArmor but sets CONFIG_LSM="", so the LSMs
+  # named in CONFIG_LSM must be enabled explicitly or the kernel silently
+  # drops them. AppArmor stays built but inactive (as on Arch); enable it
+  # at boot with lsm=landlock,yama,integrity,apparmor,bpf if wanted.
   # lockdown is deliberately omitted: SECURITY_LOCKDOWN_LSM does
   # "select MODULE_SIG if MODULES", which would silently turn on module
   # signing (ephemeral build-time key) -- a bigger change than intended here.
@@ -74,15 +76,33 @@ prepare() {
   scripts/config --enable CONFIG_BPF_LSM
   scripts/config --set-str CONFIG_LSM "landlock,yama,integrity,bpf"
 
+  # BTF type info -- consistent with Arch Linux. Required for BPF LSM
+  # programs to attach, and for sched_ext. Stripping keeps .BTF sections.
+  scripts/config --disable CONFIG_DEBUG_INFO_NONE
+  scripts/config --enable CONFIG_DEBUG_INFO
+  scripts/config --enable CONFIG_DEBUG_INFO_DWARF5
+  scripts/config --enable CONFIG_DEBUG_INFO_BTF
+  scripts/config --enable CONFIG_DEBUG_INFO_BTF_MODULES
+  scripts/config --enable CONFIG_SCHED_CLASS_EXT
+
   # align with x86_64
   scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
-  scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
+  # madvise rather than always: with 16K pages a PMD-sized THP is 32M
+  # (vs 2M on x86_64), so "always" risks memory bloat and compaction stalls.
+  # Smaller mTHP sizes can still be enabled at runtime via sysfs.
+  scripts/config --disable CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
+  scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE_MADVISE
   scripts/config --enable CONFIG_HUGETLBFS
+  scripts/config --enable CONFIG_ZSWAP_DEFAULT_ON
   scripts/config --enable CONFIG_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
-  scripts/config --set-val CONFIG_ZSWAP_COMPRESSOR_DEFAULT "zstd"
+  scripts/config --set-str CONFIG_ZSWAP_COMPRESSOR_DEFAULT "zstd"
   scripts/config --enable CONFIG_MODULE_COMPRESS_ZSTD
   
   scripts/config --enable CONFIG_KSM
+
+  # enable PSI by default (vendor disables it) -- needed by systemd-oomd
+  scripts/config --disable CONFIG_PSI_DEFAULT_DISABLED
+
   scripts/config --refresh
   make -s kernelrelease > version
   echo "Prepared $pkgbase version $(<version)"
@@ -91,7 +111,6 @@ prepare() {
 build() {
   cd "${srcdir}/${_srcname}"
   export KCFLAGS=' -mcpu=cortex-a76'
-  export KCPPFLAGS=' -mcpu=cortex-a76'
   make Image.gz dtbs modules
 }
 
@@ -108,6 +127,7 @@ _package() {
   )
   provides=(KSMBD-MODULE WIREGUARD-MODULE)
   replaces=('linux-rpi-16k')
+  conflicts=('linux-rpi-16k')
   install=$pkgbase.install
 
   cd "${srcdir}/${_srcname}"
@@ -143,6 +163,7 @@ _package-headers() {
   pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
   depends=(pahole)
   replaces=('linux-rpi-16k-headers')
+  conflicts=('linux-rpi-16k-headers')
 
   cd $_srcname
   local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
@@ -222,10 +243,19 @@ _package-headers() {
 }
 
 package_linux-firmware-rpi5() {
+  pkgdesc='Wifi and Bluetooth firmware for Raspberry Pi 5'
+  license=('LicenseRef-cypress')
   depends=('linux-firmware-broadcom')
   replaces=('firmware-raspberrypi')
 
-  mkdir -p $pkgdir/usr/lib/firmware/brcm
+  mkdir -p "$pkgdir/usr/lib/firmware/brcm"
+
+  # BCM4345C0.hcd (CYW43455) is under the Cypress licence; the upstream
+  # bluez-firmware copy is a broken HTML page, so reuse the one shipped
+  # by linux-firmware-broadcom
+  mkdir -p "$pkgdir/usr/share/licenses/$pkgname"
+  ln -s ../linux-firmware-broadcom/LICENCE.cypress \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENCE.cypress"
 
   # hopefully the need for this symlink goes
   # away with mainline device support. Without
