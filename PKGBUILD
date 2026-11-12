@@ -2,10 +2,10 @@
 
 pkgbase=linux-rpi5
 pkgver=7.3.3
-_commit=98fa5b19177cadbcf38fd3ee9738af3104a78fe7
+_commit=4da7d96faacb9f995f45f1ef63850e1c8cc0180e
 _bluezcommit=cdf61dc691a49ff01a124752bd04194907f0f9cd
 _srcname=linux-rpi
-pkgrel=1
+pkgrel=2
 pkgdesc='Vendor kernel and modules for Raspberry Pi 5'
 arch=(aarch64)
 url='https://www.raspberrypi.com/'
@@ -23,9 +23,9 @@ source=(
   "BCM4345C0.hcd::https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/$_bluezcommit/debian/firmware/broadcom/BCM4345C0.hcd"
   "config.txt"
 )
-sha256sums=('e59c82a25e203e1096a2fa25476371476f648cd40c2e99e3eb5a4d97ce1bead7'
+sha256sums=('42b906c55932d9e583c6b6c69367ce0da6f3101a25758154ee17d907e57f6275'
             '51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c'
-            '7672f8dcf1e326420f38a44a3116dd66b5e149d5124bc37e3a91db7cea7276f6')
+            '1a312a2c82554d6d9bb49b09c66f1e137284c0676e84ec6501e9a013c27aa928')
 
 case "${CARCH}" in
  x86_64)  KARCH=x86 ;;
