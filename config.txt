@@ -47,5 +47,7 @@ dtoverlay=dwc2,dr_mode=host
 
 [pi5]
 dtoverlay=nospi10
+initramfs initramfs-linux-rpi5.img followkernel
+kernel=vmlinuz-linux-rpi5
 
 [all]
